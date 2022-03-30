@@ -50,6 +50,16 @@ public class UserServlet extends HttpServlet {
         String method = req.getParameter("method");
         if (method.equals("savepwd")){
             this.updatePwd(req,resp);
+        }else if (method.equals("pwdmodify")&&method!=null){
+            this.pwdModify(req,resp);
+        }else if (method.equals("query")&&method!=null){
+            this.query(req,resp);
+        }else if (method.equals("add")&&method!=null){
+            this.add(req,resp);
+        }else if (method.equals("getrolelist") &&  method !=null){
+            this.getRoleList(req,resp);
+        }else if (method.equals("ucexist") && method != null){
+            this.userCodeExist(req,resp);
         }
     }
 
@@ -79,5 +89,186 @@ public class UserServlet extends HttpServlet {
             e.printStackTrace();
         }
     }
+    
+    //验证旧密码,session中有用户的密码
+    public void pwdModify(HttpServletRequest req, HttpServletResponse resp){
+        //从Session里面拿ID
+        Object o = req.getSession().getAttribute(Constants.USER_SESSION);
+
+        String oldpassword = req.getParameter("oldpassword");
+
+        //万能的Map,结果集
+        HashMap<String, String> resultMap = new HashMap<String, String>();
+
+        if (o==null){//Session失效了，Session过期了！
+            resultMap.put("result","sessionerror");
+        }else if (StringUtils.isNullOrEmpty(oldpassword)){//输入的旧密码为空
+            resultMap.put("result","error");
+        }else{
+            String userPassword = ((User) o).getUserPassword();//得到Session中的密码
+            //oldpassword是用户输入的旧密码，userPassword是Session中的登录密码。
+            if (oldpassword.equals(userPassword)){
+                resultMap.put("result","true");
+            }else{
+                resultMap.put("result","false");
+            }
+        }
+        //它的作用是让上面这个方法返回一个json值！
+        try {
+            resp.setContentType("application/json");
+            PrintWriter writer = resp.getWriter();
+            /*
+            * resultMap = ["result","sessionerror","result","error"]
+            * Json格式 = {key:value}
+            * */
+            //也就是把把resultMap转换成Json的格式！
+            writer.write(JSONArray.toJSONString(resultMap));
+            //刷新与关闭流！
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    //重点，难点
+    public void query(HttpServletRequest req, HttpServletResponse resp){
+
+        //查询用户列表
+        //从前端获取数据
+        String queryname = req.getParameter("queryname");
+        String queryUserRole = req.getParameter("queryUserRole");
+        String pageIndex = req.getParameter("pageIndex");
+        int num = 0 ;//表示角色默认为0
+
+        //获取用户列表
+        UserServiceImpl userService = new UserServiceImpl();
+
+        //第一次走这个请求，一定是第一页，页面大小是固定的
+        int pageSize = 5;  //可以把这个放到配置文件中，方便后期修改！
+        int currentPageNo = 1;  //默认当前页面为1
+
+        if (queryname == null){
+            queryname = "";
+        }if (queryUserRole !=null && !queryUserRole.equals("")){
+             num = Integer.parseInt(queryUserRole);  //把角色解析为具体的数字
+        }if (pageIndex!=null){
+            currentPageNo= Integer.parseInt(pageIndex);//把页面解析为具体的数字
+        }
+
+        //获取用户总数（分页： 上一页，下一页的情况）
+        int totalcount = userService.getUserCount(queryname, num);
+        //总页数支持
+        PageSupport pageSupport = new PageSupport();
+        pageSupport.setCurrentPageNo(currentPageNo);
+        pageSupport.setPageSize(pageSize);
+        pageSupport.setTotalCount(totalcount);
+
+        int totalPageCount = ((int)(totalcount/pageSize))+1;//总共有几页
+
+        //控制首页和尾页
+        if (currentPageNo<1){
+            currentPageNo = 1;
+        }else if (currentPageNo>totalPageCount){
+            currentPageNo = totalPageCount;
+        }
+
+
+        //获取用户列表展示
+        List<User> userList = userService.getUserList(queryname, num, currentPageNo, pageSize);
+        req.setAttribute("userList",userList);
+
+        RoleServiceImpl roleService = new RoleServiceImpl();
+        List<Role> roleList = roleService.getRoleList();
+        req.setAttribute("roleList",roleList);
+        req.setAttribute("totalCount",totalPageCount);
+        req.setAttribute("currentPageNo",currentPageNo);
+        req.setAttribute("totalPageCount",totalPageCount);
+        req.setAttribute("queryUserName",queryname);
+        req.setAttribute("queryUserRole",queryUserRole);
+
+        //返回前端
+        try {
+            req.getRequestDispatcher("userlist.jsp").forward(req,resp);
+        } catch (ServletException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //增加用户
+    public void add(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+
+        System.out.println("进入了servlet");
+        User user = new User();
+        user.setUserCode(req.getParameter("userCode"));
+        user.setUserName(req.getParameter("userName"));
+        user.setUserPassword(req.getParameter("userPassword"));
+        user.setGender(Integer.valueOf(req.getParameter("gender")));
+        try {
+            user.setBirthday(new SimpleDateFormat("yyyy-MM-dd").parse(req.getParameter("birthday")));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        user.setPhone(req.getParameter("phone"));
+        user.setAddress(req.getParameter("address"));
+        user.setUserRole(Integer.valueOf(req.getParameter("userRole")));
+        user.setCreatedBy(((User)req.getSession().getAttribute(Constants.USER_SESSION)).getId());
+        user.setCreationDate(new Date());
+
+        UserServiceImpl userService = new UserServiceImpl();
+        if(userService.add(user)){
+            resp.sendRedirect(req.getContextPath()+"/jsp/user.do?method=query");
+        }else{
+            req.getRequestDispatcher("useradd.jsp").forward(req,resp);
+        }
+
+    }
+
+    private void getRoleList(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        List<Role> roleList = null;
+        RoleService roleService = new RoleServiceImpl();
+        roleList = roleService.getRoleList();
+        //把roleList转换成json对象输出
+        resp.setContentType("application/json");
+        PrintWriter outPrintWriter = resp.getWriter();
+        outPrintWriter.write(JSONArray.toJSONString(roleList));
+        outPrintWriter.flush();
+        outPrintWriter.close();
+    }
+
+
+    //判断当前输入用户编码是否可用，即是否与已经存在的编码发生冲突
+    private void userCodeExist(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        System.out.println("进入了servlet方法");
+        //先拿到用户的编码
+        String userCode = req.getParameter("userCode");
+        //用一个hashmap，暂存现在所有现存的用户编码
+        HashMap<String, String> resultMap = new HashMap<String, String>();
+        if (StringUtils.isNullOrEmpty(userCode)){//如果输入的编码为空或者不存在，说明可用
+            resultMap.put("userCode","exist");
+        }else{//如果输入的编码不为空，则需要去找一下是否存在这个用户
+            UserServiceImpl userService = new UserServiceImpl();
+            User user = userService.userCodeExist(userCode);
+            if (user!=null){
+                resultMap.put("userCode","exist");
+            }else{
+                resultMap.put("userCode","notexist");
+            }
+        }
+        //把resultMap转为json字符串以json的形式输出
+        //配置上下文的输出类型
+        resp.setContentType("application/json");
+        //从response对象中获取往外输出的writer对象
+        PrintWriter writer = resp.getWriter();
+        //把resultMap转为json字符串并输出
+        writer.write(JSONArray.toJSONString(resultMap));
+        //刷新并关闭流
+        writer.flush();
+        writer.close();
+    }
+
 }
 
