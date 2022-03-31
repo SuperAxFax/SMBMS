@@ -60,6 +60,14 @@ public class UserServlet extends HttpServlet {
             this.getRoleList(req,resp);
         }else if (method.equals("ucexist") && method != null){
             this.userCodeExist(req,resp);
+        }else if (method.equals("view") && method != null){
+            System.out.println("进入了view判断");
+            this.getUserById(req,resp,"userview.jsp");
+        }
+        else if (method.equals("modifyexe") && method !=null){
+            this.modify(req,resp);
+        }else if (method.equals("modify") && method !=null){
+            this.getUserById(req,resp,"usermodify.jsp");
         }
     }
 
@@ -268,6 +276,47 @@ public class UserServlet extends HttpServlet {
         //刷新并关闭流
         writer.flush();
         writer.close();
+    }
+    
+    //修改用户信息
+    private void modify(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+        //从前端获得用户信息并放到用户user中。
+        System.out.println("进入了modify的servlet");
+        User user = new User();
+        user.setId(Integer.valueOf(req.getParameter("uid")));
+        user.setUserName(req.getParameter("userName"));
+        user.setGender(Integer.valueOf(req.getParameter("gender")));
+        try {
+            user.setBirthday(new SimpleDateFormat("yyyy-MM-dd").parse(req.getParameter("birthday")));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        user.setPhone(req.getParameter("phone"));
+        user.setAddress(req.getParameter("address"));
+        user.setUserRole(Integer.valueOf(req.getParameter("userRole")));
+        user.setModifyBy(((User)req.getSession().getAttribute(Constants.USER_SESSION)).getId());
+        user.setModifyDate(new Date());
+        //调用Service层中的modify方法对用户信息进行修改
+        UserService userService = new UserServiceImpl();
+        if (userService.modify(user)){
+            resp.sendRedirect(req.getContextPath()+"/jsp/user.do?method=query");
+        }else {
+            req.getRequestDispatcher("usermodify.jsp").forward(req,resp);
+        }
+        //用户信息包括userName,gender,birthday,phone,address,userRole
+    }
+
+    //根据id获得用户
+    private void getUserById(HttpServletRequest req, HttpServletResponse resp,String url) throws ServletException, IOException {
+        System.out.println("进入了getUserById的servlet");
+        String id = req.getParameter("uid");
+        User user = null;
+        if (!StringUtils.isNullOrEmpty(id)){
+            UserService userService = new UserServiceImpl();
+            user = userService.getUserById(id);
+            req.setAttribute("user",user);
+            req.getRequestDispatcher(url).forward(req,resp);
+        }
     }
 
 }
