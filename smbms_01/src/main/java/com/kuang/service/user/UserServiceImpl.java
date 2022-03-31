@@ -133,6 +133,39 @@ public class UserServiceImpl implements UserService {
         }
          return user;
     }
+    
+    public boolean modify(User user) {
+        System.out.println("进入了modify的service");
+        Boolean flag = false;
+        Connection connection = BaseDao.getConnection();
+        try {
+            if (userDao.modify(connection,user)>0){
+                flag = true;//flag为true表示修改成功
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }finally {
+            BaseDao.closeResource(connection,null,null);
+        }
+
+        return flag;
+    }
+
+    public User getUserById(String id) {
+        System.out.println("进入了getUserById的service");
+        Connection connection = null;
+        User user = null;
+        try {
+            connection = BaseDao.getConnection();
+            user = userDao.getUserById(connection, id);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            user = null;
+        }finally {
+            BaseDao.closeResource(connection,null,null);
+        }
+        return user;
+    }
 
 
    /* @Test
