@@ -23,4 +23,13 @@ public interface UserDao {
 
     //判断用户编码与数据库中的编码是否一样
     public User userCodeExist(Connection connection, String userCode) throws SQLException;
+    
+    //通过userId删除user
+    int deleteUserById(Connection connection, Integer delId);
+
+    //修改用户信息
+    int modify(Connection connection, User user) throws SQLException;
+
+    //根据Id获得user
+    User getUserById(Connection connection, String id) throws SQLException;
 }
