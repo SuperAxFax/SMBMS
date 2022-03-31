@@ -197,5 +197,72 @@ public class UserDaoImpl implements UserDao {
        }
         return user;
     }
+    
+    //根据UserId来删除user
+    public int deleteUserById(Connection connection, Integer delId) {
+        System.out.println("进入了delUser的Dao!");
+        PreparedStatement preparedStatement = null;
+        int flag = 0;
+        if (connection!=null){
+            String sql = "delete from smbms_user where id = ?";
+            Object[] params = {delId};
+            try {
+                flag = BaseDao.execute(connection, sql, params, preparedStatement);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }finally {
+                BaseDao.closeResource(connection,preparedStatement,null);
+            }
+        }
+        return flag;
+    }
+
+    //修改用户信息
+    public int modify(Connection connection, User user) throws SQLException {
+        System.out.println("进入了modify的dao");
+        PreparedStatement preparedStatement = null;
+        int flag = 0;
+        if (connection!=null) {
+            String sql = "update smbms_user set userName=?," +
+                    "gender=?,birthday=?,phone=?,address=?,userRole=?,modifyBy=?,modifyDate=? where id = ? ";
+            Object[] params = {user.getUserName(), user.getGender(), user.getBirthday(),
+                    user.getPhone(), user.getAddress(), user.getUserRole(), user.getModifyBy(),
+                    user.getModifyDate(), user.getId()};
+            flag = BaseDao.execute(connection, sql, params, preparedStatement);
+        }
+        return flag;
+    }
+
+    public User getUserById(Connection connection, String id) throws SQLException {
+        System.out.println("进入了getUserById的dao");
+        User user = null;
+        PreparedStatement preparedStatement = null;
+        ResultSet resultSet = null;
+        if (connection!=null){
+            String sql = "select u.*,r.roleName as userRoleName from smbms_user u, smbms_role r where u.id = ? and u.userRole = r.id";
+            Object[] params = {id};
+            resultSet = BaseDao.execute(connection, sql, params, resultSet, preparedStatement);
+            if (resultSet.next()){
+                user = new User();
+                user.setId(resultSet.getInt("id"));
+                user.setUserCode(resultSet.getString("userCode"));
+                user.setUserName(resultSet.getString("userName"));
+                user.setUserPassword(resultSet.getString("userPassword"));
+                user.setGender(resultSet.getInt("gender"));
+                user.setBirthday(resultSet.getDate("birthday"));
+                user.setPhone(resultSet.getString("phone"));
+                user.setAddress(resultSet.getString("address"));
+                user.setUserRole(resultSet.getInt("userRole"));
+                user.setCreatedBy(resultSet.getInt("createBy"));
+                user.setCreationDate(resultSet.getTimestamp("creationDate"));
+                user.setModifyBy(resultSet.getInt("modifyBy"));
+                user.setModifyDate(resultSet.getTimestamp("modifyDate"));
+                user.setUserRoleName(resultSet.getString("userRoleName"));
+            }
+            BaseDao.closeResource(connection,preparedStatement,resultSet);
+        }
+        return user;
+    }
+
 
 }
