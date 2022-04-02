@@ -253,7 +253,7 @@ public class UserDaoImpl implements UserDao {
                 user.setPhone(resultSet.getString("phone"));
                 user.setAddress(resultSet.getString("address"));
                 user.setUserRole(resultSet.getInt("userRole"));
-                user.setCreatedBy(resultSet.getInt("createBy"));
+                user.setCreatedBy(resultSet.getInt("createdBy"));
                 user.setCreationDate(resultSet.getTimestamp("creationDate"));
                 user.setModifyBy(resultSet.getInt("modifyBy"));
                 user.setModifyDate(resultSet.getTimestamp("modifyDate"));
